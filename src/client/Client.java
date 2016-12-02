@@ -67,6 +67,7 @@ public class Client {
 							}	
 						} catch (IOException ioe) {
 //							ioe.printStackTrace();
+							socket.close();
 						}
 						
 			} catch (IOException ioe) {

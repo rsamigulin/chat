@@ -46,7 +46,7 @@ public class ClientThread extends Thread {
 					username = in.readLine().trim();
 				} 
 				
-				logger.info(username + " connected");
+				logger.info(username + " connected from " + socket.getInetAddress().getHostAddress());
 				
 				userList.add(username);
 				
@@ -56,14 +56,16 @@ public class ClientThread extends Thread {
 				while(true){
 					String inMessage = in.readLine();
 					
+					if(inMessage == null){
+						throw new IOException();
+					}
+					
 					if("exit".equals(inMessage.trim())){
 						Server.clients.sendPersonalMessage(socket, "Server: goodbye, " + username + "!");
 						Server.clients.getNames().remove(username);
 						Server.clients.removeUser(this);
 						
-						socket.close();
 						throw new IOException();
-						
 					}
 					logger.info(username + ": " + inMessage);
 					Server.clients.sendMessage(socket, username + ": " + inMessage);
