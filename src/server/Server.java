@@ -22,7 +22,7 @@ public class Server {
 				Socket socket = serverSocket.accept();
 				client = new ClientThread(socket);
 				client.start();
-				clients.addUser(client);
+				clients.addClient(client);
 				logger.info("new client connected");
 			}
 			

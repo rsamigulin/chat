@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
-import java.util.HashSet;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 
@@ -18,6 +18,7 @@ public class ClientThread extends Thread {
 		private BufferedReader in;
 		private BufferedWriter out;
 		private String username;
+		Set<String> userList =  Server.clients.getNames();
 		
 		public ClientThread(Socket socket) throws IOException {
 			this.socket = socket;
@@ -28,22 +29,11 @@ public class ClientThread extends Thread {
 		@Override
 		public void run() {
 			Server.clients.sendPersonalMessage(socket, "Server: enter username!");
-			HashSet<String> userList =  Server.clients.getNames();
 			
 			try{
 				username = in.readLine().trim();
-				
 				while(userList.contains(username) || isEmptyUsername(username)){
-					
-					if(isEmptyUsername(username))
-						Server.clients.sendPersonalMessage(socket, 
-								"Server: username can not be empty, please enter name!");
-					
-					if(userList.contains(username))
-								Server.clients.sendPersonalMessage(socket, 
-							"Server: name '" + username + "' already exists, please enter other name!");
-					
-					username = in.readLine().trim();
+					readUserName();
 				} 
 				
 				logger.info(username + " connected from " + socket.getInetAddress().getHostAddress());
@@ -54,42 +44,13 @@ public class ClientThread extends Thread {
 				Server.clients.sendMessage(socket, "Server: " + username + " joined the chat!");
 				
 				while(true){
-					String inMessage = in.readLine();
-					
-					if(inMessage == null){
-						throw new IOException();
-					}
-					
-					if("exit".equals(inMessage.trim())){
-						Server.clients.sendPersonalMessage(socket, "Server: goodbye, " + username + "!");
-						Server.clients.getNames().remove(username);
-						Server.clients.removeUser(this);
-						
-						throw new IOException();
-					}
-					logger.info(username + ": " + inMessage);
-					Server.clients.sendMessage(socket, username + ": " + inMessage);
+					readMessage();
 				}
 				
 			} catch (IOException e) {
 			} finally {
-					if (socket != null){
-						try {
-							Server.clients.sendPersonalMessage(socket, "Server: goodbye, " + username + "!");
-							Server.clients.sendMessage(socket, "Server: " + username + " leaved the chat!");
-							Server.clients.getNames().remove(username);
-							Server.clients.removeUser(this);
-							socket.close();
-							logger.info(username + " disconnect");
-						} catch (IOException e) {
-//							e.printStackTrace();
-						}
-					}
-					
-					close(out);
-					close(in);
+				finallyBlock();
 			}
-			
 		}
 	
 		public void sendMsg(String message){
@@ -121,5 +82,54 @@ public class ClientThread extends Thread {
 					e.printStackTrace();
 				}
 			}
+		}
+		
+		public void readUserName() throws IOException{
+				if(isEmptyUsername(username))
+					Server.clients.sendPersonalMessage(socket, 
+							"Server: username can not be empty, please enter name!");
+				
+				if(userList.contains(username))
+							Server.clients.sendPersonalMessage(socket, 
+						"Server: name '" + username + "' already exists, please enter other name!");
+				
+				username = in.readLine().trim();
+		}
+		
+		public void readMessage() throws IOException{
+			String inMessage = in.readLine();
+			
+			if(inMessage == null){
+				throw new IOException();
+			}
+			
+			if("exit".equals(inMessage.trim())){
+				Server.clients.sendPersonalMessage(socket, "Server: goodbye, " + username + "!");
+				Server.clients.getNames().remove(username);
+				Server.clients.removeClient(this);
+				
+				throw new IOException();
+			}
+			
+			logger.info(username + ": " + inMessage);
+			Server.clients.sendMessage(socket, username + ": " + inMessage);
+		}
+		
+		public void finallyBlock(){
+			if (socket != null){
+				try {
+					Server.clients.sendPersonalMessage(socket, "Server: goodbye, " + username + "!");
+					Server.clients.sendMessage(socket, "Server: " + username + " leaved the chat!");
+					Server.clients.getNames().remove(username);
+					Server.clients.removeClient(this);
+					socket.close();
+					logger.info(username + " disconnect");
+				} catch (IOException e) {
+//					e.printStackTrace();
+				}
+			}
+			
+			close(out);
+			close(in);
 		}
 }
